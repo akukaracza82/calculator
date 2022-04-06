@@ -98,8 +98,8 @@ class JobQuote
   def check_db(pickup, dropoff)
     begin
       db = SQLite3::Database.new "../invoiceScanner/pcs.db"
-      pickup_location = db.execute("SELECT lat, long FROM postcodes WHERE code = '#{check_in_kody(pickup)}'")[0];
-      dropoff_location = db.execute("SELECT lat, long FROM postcodes WHERE code = '#{check_in_kody(dropoff)}'")[0]
+      pickup_location = db.execute("SELECT lat, long FROM postcodes WHERE code like '#{check_in_kody(pickup)}%'")[0];
+      dropoff_location = db.execute("SELECT lat, long FROM postcodes WHERE code like '#{check_in_kody(dropoff)}%'")[0]
       [ pickup_location, dropoff_location ]
     ensure
       db.close if db
