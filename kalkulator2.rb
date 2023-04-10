@@ -5,7 +5,7 @@ require 'sqlite3'
 require 'byebug'
 
 class JobQuote
-  attr_accessor :rate, :distance, :time, :type
+  attr_accessor :rate, :rate2, :distance, :time, :type
 
   def initialize
     # (type, time, distance)
@@ -13,12 +13,13 @@ class JobQuote
     @time = time_from_user
     @distance = get_distance_from_tomtom(pickup_from_user, dropoff_from_user)
     @rate = Rate.new(type, time).check_rate([type, time])
+    @rate2 = Rate2.new(type, time).check_rate([type, time])
   end
 
   def outcome
-    puts "Quote for #{distance} miles in #{time}/#{type} -  #{calc_payment(distance, rate)} + #{calculate_holiday_pay} holiday pay = #{(calc_payment(distance, rate) + calculate_holiday_pay).truncate(2)}"
+    puts "Quote for holiday pay = OLD DEAL #{calculate_holiday_pay(rate).truncate(2)}, NEW DEAL #{calculate_holiday_pay(rate2).truncate(2)}"
     puts "Fuel expense each way - #{calculate_fuel_expense(@distance)}"
-    puts "Earning today before holiday pay and after fuel - #{(calc_payment(distance, rate) - calculate_fuel_expense(@distance)).truncate(2) }"
+    puts "Earning today before holiday pay - OLD DEAL - #{(calc_payment(distance, rate)).truncate(2) }, NEW DEAL - #{(calc_payment(distance, rate2)).truncate(2) }"
   end
 
   private
@@ -51,12 +52,14 @@ class JobQuote
     end
   end
 
-  def calculate_holiday_pay
+  def calculate_holiday_pay(rate)
     ((calc_payment(distance, rate) - distance * 0.45) * 0.127).truncate(2)
   end
 
   def calculate_fuel_expense(dist)
-    (dist * 0.2).truncate(2)
+    diesel = (dist * 0.15).truncate(2)
+    ev = (dist *  0.07).truncate(2)
+    "diesel: £#{diesel}, ev: £#{ev}"
   end
 
   def check_in_kody(val)
@@ -110,7 +113,7 @@ class JobQuote
     coords = check_db(pickup, dropoff)
     response = HTTParty.get("https://api.tomtom.com/routing/1/calculateRoute/#{coords[0][0]}%2C#{coords[0][1]}%3A#{coords[1][0]}%2C#{coords[1][1]}/json?routeType=shortest&avoid=unpavedRoads&key=uwbU08nKLNQTyNrOrrQs5SsRXtdm4CXM")
     a = JSON.parse(response.body)
-    distance = (a['routes'][0]['summary']['lengthInMeters'] / 1600.0).round(2)
+    (a['routes'][0]['summary']['lengthInMeters'] / 1600.0).round(2)
   end
 
   Rate = Struct.new(:type, :time) do
@@ -124,6 +127,21 @@ class JobQuote
       rate = SOFFPEAK if args == ['select', 'offpeak']
       rate = PLUSPEAK if args == ['select+', 'peak']
       rate = PLUSOFFPEAK if args == ['select+', 'offpeak']
+      rate
+    end
+  end
+
+  Rate2 = Struct.new(:type, :time) do
+    SPEAK2 = [7.5, 2.5, 1.9, 1.75, 1.3, 1.3]
+    SOFFPEAK2 = [6.75, 2, 1.75, 1.65, 1.3, 1.3]
+    PLUSPEAK2 = [9.5, 3.25, 2.35, 2.05, 1.5, 1.5]
+    PLUSOFFPEAK2 = [8.5, 2.4, 2.2, 2, 1.5, 1.5]
+
+    def check_rate(args)
+      rate = SPEAK2 if args == ['select', 'peak']
+      rate = SOFFPEAK2 if args == ['select', 'offpeak']
+      rate = PLUSPEAK2 if args == ['select+', 'peak']
+      rate = PLUSOFFPEAK2 if args == ['select+', 'offpeak']
       rate
     end
   end

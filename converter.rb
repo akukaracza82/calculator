@@ -15,3 +15,4 @@ class Codes < ActiveRecord::Base
     end
   end
 end
+
